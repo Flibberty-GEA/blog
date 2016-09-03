@@ -1,34 +1,34 @@
 package ua.skillsup.javacourse.blog;
 
-import org.apache.commons.dbcp.BasicDataSource;
+import org.apache.commons.dbcp2.BasicDataSource;
+import org.hibernate.SessionFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
+import org.springframework.dao.annotation.PersistenceExceptionTranslationPostProcessor;
 import org.springframework.orm.hibernate3.annotation.AnnotationSessionFactoryBean;
+import org.springframework.orm.hibernate5.HibernateTransactionManager;
+import org.springframework.transaction.annotation.EnableTransactionManagement;
 
 import javax.sql.DataSource;
 import java.util.Properties;
 
-/**
- * Created by Flibberty on 03.06.2016.
- */
 @Configuration
-public class SpringConfig {
+@ComponentScan({
+        "ua.skillsup.javacourse.blog.service",
+        "ua.skillsup.javacourse.blog.persistence",
+        //"ua.skillsup.javacourse.blog.demo"
+        })
+@EnableTransactionManagement
+public class SpringPersistenceConfig {
 
 /*    @Value("${hibernateDialect}")
     private String hibernateDialect;*/
 
     @Autowired
     private Environment env; // отсуюда мы будем брать проперти, которые загрузили через @PropertySource
-
-    /*Аннотация @Bean сообщает фреймворку Spring, что данный метод вернет объект,
-    который должен быть зарегистрирован в контексте приложения Spring как компонент.
-    Компонент получит идентификатор, совпадающий с именем метода.
-    Идентификатор компонента и его тип являются частью сигнатуры метода.
-    Фактическое создание компонента выполняется в теле метода.  */
-
-
 
     /* Настройка источника данных. Использование пулов соединений */
     @Bean // Компонент получит идентификатор dataSource.
@@ -40,16 +40,11 @@ public class SpringConfig {
         ds.setUsername("sa");
         ds.setPassword("");
         ds.setInitialSize(5);
-        ds.setMaxActive(10);
+        ds.setMaxTotal(10);
         return ds;
     }
 
-    // хибернейтовский sessionFactory.
-    // у спринга есть удобный класс-фабрика LocalSessionFactoryBean, который мы и будем использовать.
-    // он позволяет настроить автоматическое сканирование классов-сущностей.
-
-    /**/
-
+    /* Настройка фабрики сеансов доступа к данным */
     @Bean
     public AnnotationSessionFactoryBean sessionFactory() {
         final AnnotationSessionFactoryBean sessionFactory = new AnnotationSessionFactoryBean();
@@ -70,26 +65,19 @@ public class SpringConfig {
         };
     }
 
+    /* Настройка преобразования исключений без применения класса шаблона поддержки (необязательно) */
+    @Bean
+    public PersistenceExceptionTranslationPostProcessor exceptionTranslation() {
+        return new PersistenceExceptionTranslationPostProcessor();
+    }
 
+    /* Настройка менеджера транзакций */
+    @Bean
+    @Autowired
+    public HibernateTransactionManager transactionManager(SessionFactory sessionFactory) {
+        HibernateTransactionManager txManager = new HibernateTransactionManager();
+        txManager.setSessionFactory(sessionFactory);
+        return txManager;
+    }
 
-
-/*    private Properties hibernateProperties(){
-        Properties properties = new Properties();
-        properties.setProperty("hibernate.dialect", hibernateDialect);
-        properties.setProperty("hibernate.show_sql", showSql);
-        properties.setProperty("hibernate.format_sql", formatSql);
-        properties.setProperty("hibernate.use_sql_comments", useSqlComments);
-        return properties;
-    }*/
-
-
-
-
-    /*
- <property name="hibernateProperties">
- <props>
- <prop key="dialect">org.hibernate.dialect.HSQLDialect</prop>
- </props>
- </property>
-</bean>*/
 }
